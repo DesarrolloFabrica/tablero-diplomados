@@ -7,8 +7,8 @@ valor vendido, becas, conversión por programa y asesor, y perfil de los estudia
 ```
 ┌──────────────────────┐   /api/*   ┌──────────────────────┐  socket  ┌───────────────────────────┐
 │ diplomados-frontend  │ ─────────▶ │ diplomados-backend   │ ───────▶ │ Cloud SQL core-database   │
-│ React + nginx        │   proxy    │ FastAPI (solo lectura)│ Cloud SQL│ base core · schema        │
-│ Cloud Run            │            │ Cloud Run            │ connector│ ventas_ec                 │
+│ React + nginx        │   proxy    │ FastAPI (solo lectura)│ cr-conn. │ base core · schema        │
+│ Cloud Run            │            │ Cloud Run            │ VPC +SSL │ ventas_ec                 │
 └──────────────────────┘            └──────────────────────┘          └───────────────────────────┘
        it-fab-contenido-edu-4 · us-central1                              it-fab-contenido-edu-6
 ```
@@ -77,7 +77,7 @@ Vite reenvía `/api` a `localhost:8787` (se cambia con `VITE_API_PROXY`).
 
 ## Despliegue en GCP
 
-**Una sola vez** (cuenta de servicio, secreto `DB_PASSWORD` y permisos sobre Cloud SQL):
+**Una sola vez** (secreto `DB_PASSWORD` y acceso de Cloud Run a ese secreto):
 
 ```powershell
 .\scripts\setup-gcp.ps1
@@ -97,8 +97,8 @@ crea un trigger de Cloud Build conectado a este repositorio que use `cloudbuild.
 
 | Variable | Local | Cloud Run |
 |---|---|---|
-| `DB_HOST` / `DB_PORT` | IP pública de la instancia | — (usa socket) |
-| `INSTANCE_CONNECTION_NAME` | — | `it-fab-contenido-edu-6:us-central1:core-database` |
+| `DB_HOST` / `DB_PORT` | IP pública de la instancia | la misma IP, saliendo por el conector VPC `cr-connector` (IP fija autorizada) |
+| `DB_SSLMODE` | `require` | `require` |
 | `DB_NAME`, `DB_USER` (o `DB_USERNAME`), `DB_SCHEMA` | `.env` | `--set-env-vars` |
 | `DB_PASSWORD` | `.env` | Secret Manager `diplomados-db-password` |
 | `CACHE_TTL_SECONDS` | opcional (300) | opcional |

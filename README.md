@@ -26,10 +26,11 @@ backend/            API FastAPI
   app/queries.py    consultas sobre ventas_ec (definición de cada métrica)
   app/main.py       endpoints + caché en memoria
   Dockerfile
-frontend/           SPA React + Vite + ECharts
-  src/App.tsx       layout, filtros y KPIs
-  src/charts.ts     configuración de cada gráfico
-  src/styles.css    tokens de color (claro / oscuro)
+frontend/           SPA React + Vite + Chart.js (misma estética y componentes del tablero legacy)
+  src/App.jsx       layout: barra CUN, filtros, KPIs y gráficos
+  src/components/   un componente por gráfico (burbujas, desviación, edad, género, cascada, heatmap…)
+  src/context/      filtros + carga de datos desde /api/ventas
+  src/data/         paleta/semáforo y datos en vivo (live bindings)
   nginx/            plantilla nginx (proxy /api → backend)
   Dockerfile
 cloudbuild.yaml     build + despliegue de los dos servicios
@@ -108,5 +109,7 @@ crea un trigger de Cloud Build conectado a este repositorio que use `cloudbuild.
 |---|---|
 | `GET /api/health` | estado de la API y de la conexión a la base |
 | `GET /api/filtros` | líneas y periodos disponibles, con su rango de cortes |
-| `GET /api/tablero?linea=&periodo=` | todo el tablero: KPIs, evolución, programas, asesores, demografía |
+| `GET /api/ventas/filtros` | opciones de filtros: líneas, periodos, diplomados, semanas |
+| `GET /api/ventas?linea=&periodo=&programa=&semana=` | payload del tablero (KPIs, burbujas, desviación, edad, género, cascada, heatmap, trayectoria, flujo semanal) |
+| `GET /api/tablero?linea=&periodo=` | resumen alterno por corte (KPIs, evolución, programas, asesores) |
 | `GET /api/docs` | documentación interactiva (OpenAPI) |

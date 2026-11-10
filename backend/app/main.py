@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from . import queries
+from . import queries, ventas
 from .config import settings
 from .db import ping
 
@@ -74,3 +74,24 @@ def tablero(
     if linea is not None and linea not in queries.LINEAS:
         raise HTTPException(status_code=422, detail=f"linea debe ser una de {list(queries.LINEAS)}")
     return _run(lambda: _cached(("tablero", linea, periodo), lambda: queries.tablero(linea, periodo)))
+
+
+_CODE = r"^[A-Za-z0-9_-]+$"
+
+
+@app.get("/api/ventas/filtros")
+def ventas_filtros() -> dict[str, Any]:
+    return _run(lambda: _cached(("ventas-filtros",), ventas.filtros))
+
+
+@app.get("/api/ventas")
+def ventas_tablero(
+    linea: str | None = Query(None, description="Diplomado | Especializacion"),
+    periodo: str | None = Query(None, max_length=12, pattern=_CODE),
+    programa: str | None = Query(None, max_length=12, pattern=_CODE, description="cod_unidad"),
+    semana: str | None = Query(None, max_length=8, pattern=r"^\d{4}-W\d{2}$", description="Semana ISO de creación"),
+) -> dict[str, Any]:
+    if linea is not None and linea not in queries.LINEAS:
+        raise HTTPException(status_code=422, detail=f"linea debe ser una de {list(queries.LINEAS)}")
+    key = ("ventas", linea, periodo, programa, semana)
+    return _run(lambda: _cached(key, lambda: ventas.ventas(linea, periodo, programa, semana)))

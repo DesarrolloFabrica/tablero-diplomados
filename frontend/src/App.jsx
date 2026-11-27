@@ -11,9 +11,21 @@ import AgeChart     from './components/AgeChart'
 import SlopeChart   from './components/SlopeChart'
 import WeeklyFlow   from './components/WeeklyFlow'
 import Footer       from './components/Footer'
-import { useVentasState } from './context/VentasFiltersContext'
+import { useAuth } from './context/AuthContext'
+import { VentasFiltersProvider, useVentasState } from './context/VentasFiltersContext'
+import LoginScreen from './components/LoginScreen'
 
 export default function App() {
+  const { status, user } = useAuth()
+  if (status !== 'in' || !user) return <LoginScreen />
+  return (
+    <VentasFiltersProvider>
+      <Dashboard />
+    </VentasFiltersProvider>
+  )
+}
+
+function Dashboard() {
   const { status, data, error, reload } = useVentasState()
 
   useEffect(() => {

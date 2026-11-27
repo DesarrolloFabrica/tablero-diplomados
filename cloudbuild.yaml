@@ -21,6 +21,11 @@ substitutions:
   _DB_USER: user-core
   _DB_SCHEMA: ventas_ec
   _DB_PASSWORD_SECRET: diplomados-db-password
+  _SESSION_SECRET: diplomados-session-secret
+  # Cliente OAuth web (consola de Google). Pasar en el submit si aquí queda vacío:
+  #   --substitutions=_GOOGLE_CLIENT_ID=123.apps.googleusercontent.com
+  _GOOGLE_CLIENT_ID: ''
+  _AUTH_ALLOWED_DOMAIN: cun.edu.co
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -48,25 +53,30 @@ steps:
 
   - id: deploy-backend
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - ${_BACKEND_SERVICE}
-      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_BACKEND_SERVICE}:${BUILD_ID}
-      - --region=${_REGION}
-      # Igual que los demás backends del proyecto que usan core-database: salida por el
-      # conector VPC (IP fija autorizada en la instancia) y conexión por IP pública con SSL.
-      - --vpc-connector=${_VPC_CONNECTOR}
-      - --vpc-egress=all-traffic
-      - --set-env-vars=DB_HOST=${_DB_HOST},DB_PORT=5432,DB_NAME=${_DB_NAME},DB_USER=${_DB_USER},DB_SCHEMA=${_DB_SCHEMA},DB_SSLMODE=require
-      - --set-secrets=DB_PASSWORD=${_DB_PASSWORD_SECRET}:latest
-      - --memory=512Mi
-      - --cpu=1
-      - --min-instances=0
-      - --max-instances=3
-      - --allow-unauthenticated
-      - --quiet
+      - -c
+      - |
+        set -euo pipefail
+        # Igual que los demás backends del proyecto que usan core-database: salida por el
+        # conector VPC (IP fija autorizada en la instancia) y conexión por IP pública con SSL.
+        ENV_VARS="DB_HOST=${_DB_HOST},DB_PORT=5432,DB_NAME=${_DB_NAME},DB_USER=${_DB_USER},DB_SCHEMA=${_DB_SCHEMA},DB_SSLMODE=require,AUTH_ALLOWED_DOMAIN=${_AUTH_ALLOWED_DOMAIN}"
+        if [ -n "${_GOOGLE_CLIENT_ID}" ]; then
+          ENV_VARS="$${ENV_VARS},GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}"
+        fi
+        gcloud run deploy ${_BACKEND_SERVICE} \
+          --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_BACKEND_SERVICE}:${BUILD_ID} \
+          --region=${_REGION} \
+          --vpc-connector=${_VPC_CONNECTOR} \
+          --vpc-egress=all-traffic \
+          --set-env-vars="$$ENV_VARS" \
+          --set-secrets=DB_PASSWORD=${_DB_PASSWORD_SECRET}:latest,SESSION_SECRET=${_SESSION_SECRET}:latest \
+          --memory=512Mi \
+          --cpu=1 \
+          --min-instances=0 \
+          --max-instances=3 \
+          --allow-unauthenticated \
+          --quiet
     waitFor: ['push-backend']
 
   - id: deploy-frontend

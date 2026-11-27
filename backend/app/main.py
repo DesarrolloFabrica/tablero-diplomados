@@ -7,11 +7,22 @@ import threading
 import time
 from typing import Any, Callable
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from pydantic import BaseModel, Field
 
 from . import queries, ventas
+from .auth import (
+    COOKIE,
+    auth_block_reason,
+    cookie_secure,
+    issue_session,
+    local_user,
+    public_config,
+    read_session,
+    verify_google_credential,
+)
 from .config import settings
 from .db import ping
 
@@ -24,8 +35,37 @@ if settings.cors_origins:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_methods=["GET"],
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
+    )
+
+
+class GoogleLogin(BaseModel):
+    credential: str = Field(min_length=1, max_length=8192)
+
+
+def require_user(tablero_session: str | None = Cookie(default=None, alias=COOKIE)) -> dict[str, str]:
+    if settings.auth_disabled:
+        return local_user()
+    reason = auth_block_reason()
+    if reason:
+        raise HTTPException(status_code=503, detail=reason)
+    user = read_session(tablero_session)
+    if not user:
+        raise HTTPException(status_code=401, detail="Inicia sesión para ver el tablero.")
+    return user
+
+
+def _set_session_cookie(response: Response, request: Request, token: str) -> None:
+    response.set_cookie(
+        key=COOKIE,
+        value=token,
+        httponly=True,
+        secure=cookie_secure(request),
+        samesite="lax",
+        max_age=settings.session_ttl_seconds,
+        path="/",
     )
 
 _cache: dict[tuple, tuple[float, Any]] = {}
@@ -52,6 +92,37 @@ def _run(fn: Callable[[], Any]) -> Any:
         raise HTTPException(status_code=503, detail="No fue posible consultar la base de datos.") from exc
 
 
+@app.get("/api/auth/config")
+def auth_config() -> dict[str, Any]:
+    return public_config()
+
+
+@app.get("/api/auth/me")
+def auth_me(tablero_session: str | None = Cookie(default=None, alias=COOKIE)) -> dict[str, str]:
+    if settings.auth_disabled:
+        return local_user()
+    reason = auth_block_reason()
+    if reason:
+        raise HTTPException(status_code=503, detail=reason)
+    user = read_session(tablero_session)
+    if not user:
+        raise HTTPException(status_code=401, detail="Sin sesión.")
+    return user
+
+
+@app.post("/api/auth/google")
+def auth_google(body: GoogleLogin, request: Request, response: Response) -> dict[str, str]:
+    user = verify_google_credential(body.credential)
+    _set_session_cookie(response, request, issue_session(user))
+    return user
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request, response: Response) -> dict[str, bool]:
+    response.delete_cookie(COOKIE, path="/", samesite="lax", secure=cookie_secure(request))
+    return {"ok": True}
+
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     try:
@@ -62,7 +133,7 @@ def health() -> dict[str, Any]:
 
 
 @app.get("/api/filtros")
-def filtros() -> dict[str, Any]:
+def filtros(_: dict[str, str] = Depends(require_user)) -> dict[str, Any]:
     return _run(lambda: _cached(("filtros",), queries.filtros))
 
 
@@ -70,6 +141,7 @@ def filtros() -> dict[str, Any]:
 def tablero(
     linea: str | None = Query(None, description="Diplomado | Especializacion"),
     periodo: str | None = Query(None, max_length=12, pattern=r"^[A-Za-z0-9]+$"),
+    _: dict[str, str] = Depends(require_user),
 ) -> dict[str, Any]:
     if linea is not None and linea not in queries.LINEAS:
         raise HTTPException(status_code=422, detail=f"linea debe ser una de {list(queries.LINEAS)}")
@@ -80,7 +152,7 @@ _CODE = r"^[A-Za-z0-9_-]+$"
 
 
 @app.get("/api/ventas/filtros")
-def ventas_filtros() -> dict[str, Any]:
+def ventas_filtros(_: dict[str, str] = Depends(require_user)) -> dict[str, Any]:
     return _run(lambda: _cached(("ventas-filtros",), ventas.filtros))
 
 
@@ -90,6 +162,7 @@ def ventas_tablero(
     periodo: str | None = Query(None, max_length=12, pattern=_CODE),
     programa: str | None = Query(None, max_length=12, pattern=_CODE, description="cod_unidad"),
     semana: str | None = Query(None, max_length=8, pattern=r"^\d{4}-W\d{2}$", description="Semana ISO de creación"),
+    _: dict[str, str] = Depends(require_user),
 ) -> dict[str, Any]:
     if linea is not None and linea not in queries.LINEAS:
         raise HTTPException(status_code=422, detail=f"linea debe ser una de {list(queries.LINEAS)}")

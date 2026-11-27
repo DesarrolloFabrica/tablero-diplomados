@@ -8,7 +8,7 @@ import {
 } from 'chart.js'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import App from './App'
-import { VentasFiltersProvider } from './context/VentasFiltersContext'
+import { AuthProvider } from './context/AuthContext'
 import './styles.css'
 
 // ── Register ALL Chart.js components globally ──────────────────
@@ -25,8 +25,8 @@ ChartJS.defaults.color = '#475569'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <VentasFiltersProvider>
+    <AuthProvider>
       <App />
-    </VentasFiltersProvider>
+    </AuthProvider>
   </React.StrictMode>,
 )

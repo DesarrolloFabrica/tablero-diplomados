@@ -258,7 +258,11 @@ body.is-embedded .ftr {
 .app-shell-brand-img{display:block;height:auto!important;width:auto!important;max-height:clamp(48px,8.5vh,72px)!important;max-width:min(520px,52vw)!important;object-fit:contain;object-position:left center;mix-blend-mode:screen}
 .app-shell-tabwrap{flex:1;min-width:0;display:flex;justify-content:center;align-items:center}
 .app-shell-user{display:flex;align-items:center;gap:12px;flex-shrink:0;margin-left:auto}
-.app-shell-user-avatar{width:44px;height:44px;border-radius:50%;background:#143a61;border:1px solid rgba(255,255,255,.25);color:#7dd3fc;display:flex;align-items:center;justify-content:center}
+.app-shell-user-avatar{width:44px;height:44px;border-radius:50%;background:#143a61;border:1px solid rgba(255,255,255,.25);color:#7dd3fc;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.app-shell-user-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.app-shell-logout{margin-left:4px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
+.app-shell-logout:hover{background:rgba(255,255,255,.08)}
+.app-shell-logout:focus-visible{outline:2px solid #7dd3fc;outline-offset:2px}
 .app-shell-user-lines{display:flex;flex-direction:column;gap:2px;line-height:1.25;text-align:left}
 .app-shell-user-name{display:block;font-size:14px;font-weight:700;color:#fff;letter-spacing:.02em}
 .app-shell-user-role{display:block;font-size:12px;font-weight:400;color:rgba(226,239,252,.82);line-height:1.25}
@@ -279,3 +283,12 @@ body.is-embedded .ventas-dash-filters{ margin-top: 10px; }
 .ventas-estado{ max-width:1700px; margin:0 auto; padding:24px 22px; color:var(--gray); font-size:12px; }
 .ventas-estado.err{ color:var(--red); }
 .ventas-estado button{ margin-left:10px; }
+
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;background:radial-gradient(circle at top,#143a61 0%,#001529 46%,#020817 100%)}
+.login-card{width:min(440px,100%);background:#fff;border-radius:16px;padding:0 32px 32px;box-shadow:0 18px 50px rgba(0,0,0,.28);text-align:center;overflow:hidden}
+.login-brand{background:#001529;margin:0 -32px 28px;padding:22px 24px}
+.login-logo{height:52px;width:auto;max-width:100%;margin:0 auto;display:block;mix-blend-mode:screen}
+.login-card h1{font-size:26px;line-height:1.2;color:#0b1c3a;margin-bottom:8px}
+.login-card p{color:#475569;font-size:14px;margin-bottom:22px}
+.login-google{display:flex;justify-content:center;min-height:44px}
+.login-error{color:#b91c1c;font-size:13px;margin-top:16px;margin-bottom:0}

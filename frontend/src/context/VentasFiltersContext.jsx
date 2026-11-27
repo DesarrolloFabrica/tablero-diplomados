@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { UNAUTHORIZED } from './AuthContext'
 import { setVentasPayload } from '../data'
 
 /**
@@ -10,7 +11,11 @@ const VentasFiltersContext = createContext(null)
 const VentasDataContext = createContext(null)
 
 async function getJson(url, signal) {
-  const res = await fetch(url, { signal, headers: { Accept: 'application/json' } })
+  const res = await fetch(url, { signal, credentials: 'same-origin', headers: { Accept: 'application/json' } })
+  if (res.status === 401) {
+    window.dispatchEvent(new Event(UNAUTHORIZED))
+    throw new Error('La sesión expiró. Vuelve a entrar.')
+  }
   if (!res.ok) {
     let detail = ''
     try {

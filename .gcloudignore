@@ -5,6 +5,7 @@
 **/.env
 _legacy/
 **/node_modules/
+**/.venv/
 frontend/dist/
 **/__pycache__/
 *.log

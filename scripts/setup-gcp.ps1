@@ -10,38 +10,66 @@
 #
 # Qué hace:
 #   1. Crea/actualiza el secreto con DB_PASSWORD (leído del .env, nunca se imprime).
-#   2. Da a la cuenta por defecto de Cloud Run acceso de lectura a ese secreto.
+#   2. Crea el secreto de la cookie de sesión si todavía no existe.
+#   3. Da a la cuenta por defecto de Cloud Run acceso de lectura a ambos secretos.
 # ─────────────────────────────────────────────────────────────────────────────
 
 param(
-    [string] $Project    = "it-fab-contenido-edu-4",
-    [string] $SecretName = "diplomados-db-password",
-    [string] $EnvFile    = (Join-Path $PSScriptRoot "..\.env")
+    [string] $Project           = "it-fab-contenido-edu-4",
+    [string] $SecretName        = "diplomados-db-password",
+    [string] $SessionSecretName = "diplomados-session-secret",
+    [string] $EnvFile           = (Join-Path $PSScriptRoot "..\.env")
 )
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "1/2 Secreto $SecretName"
+function Set-SecretFile([string] $Name, [string] $Path) {
+    $exists = gcloud secrets list --project $Project --filter "name~$Name" --format "value(name)"
+    if ($exists) {
+        gcloud secrets versions add $Name --project $Project --data-file $Path
+    } else {
+        gcloud secrets create $Name --project $Project --replication-policy automatic --data-file $Path
+    }
+}
+
+function Grant-Secret([string] $Name, [string] $Member) {
+    gcloud secrets add-iam-policy-binding $Name --project $Project `
+        --member $Member `
+        --role roles/secretmanager.secretAccessor --format none
+}
+
+Write-Host "1/3 Secreto $SecretName"
 $line = Get-Content $EnvFile | Where-Object { $_ -match '^\s*DB_PASSWORD\s*=' } | Select-Object -First 1
 if (-not $line) { throw "No se encontró DB_PASSWORD en $EnvFile" }
 $password = ($line -replace '^\s*DB_PASSWORD\s*=\s*', '').Trim().Trim("'").Trim('"')
 $tmp = New-TemporaryFile
 try {
     [System.IO.File]::WriteAllText($tmp.FullName, $password)
-    $exists = gcloud secrets list --project $Project --filter "name~$SecretName" --format "value(name)"
-    if ($exists) {
-        gcloud secrets versions add $SecretName --project $Project --data-file $tmp.FullName
-    } else {
-        gcloud secrets create $SecretName --project $Project --replication-policy automatic --data-file $tmp.FullName
-    }
+    Set-SecretFile $SecretName $tmp.FullName
 } finally {
     Remove-Item $tmp.FullName -Force
 }
 
-Write-Host "2/2 Acceso de Cloud Run al secreto"
+Write-Host "2/3 Secreto $SessionSecretName"
+$sessionExists = gcloud secrets list --project $Project --filter "name~$SessionSecretName" --format "value(name)"
+if (-not $sessionExists) {
+    $bytes = New-Object byte[] 32
+    [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $sessionTmp = New-TemporaryFile
+    try {
+        [System.IO.File]::WriteAllText($sessionTmp.FullName, [Convert]::ToBase64String($bytes))
+        Set-SecretFile $SessionSecretName $sessionTmp.FullName
+    } finally {
+        Remove-Item $sessionTmp.FullName -Force
+    }
+} else {
+    Write-Host "   ya existe; no se rota"
+}
+
+Write-Host "3/3 Acceso de Cloud Run a los secretos"
 $number = gcloud projects describe $Project --format "value(projectNumber)"
-gcloud secrets add-iam-policy-binding $SecretName --project $Project `
-    --member "serviceAccount:$number-compute@developer.gserviceaccount.com" `
-    --role roles/secretmanager.secretAccessor --format none
+$member = "serviceAccount:$number-compute@developer.gserviceaccount.com"
+Grant-Secret $SecretName $member
+Grant-Secret $SessionSecretName $member
 
 Write-Host "`nListo. Despliega con:`n  gcloud builds submit --config cloudbuild.yaml --project $Project"

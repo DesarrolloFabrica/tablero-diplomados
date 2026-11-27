@@ -28,6 +28,10 @@ def _env(*names: str, default: str = "") -> str:
     return default
 
 
+def _flag(name: str) -> bool:
+    return _env(name, default="").lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Settings:
     db_host: str
@@ -40,6 +44,12 @@ class Settings:
     instance_connection_name: str
     cors_origins: list[str]
     cache_ttl_seconds: int
+    google_client_id: str
+    auth_allowed_domain: str
+    auth_allowed_emails: frozenset[str]
+    session_secret: str
+    session_ttl_seconds: int
+    auth_disabled: bool
 
     @property
     def schema_sql(self) -> str:
@@ -75,6 +85,9 @@ def load_settings() -> Settings:
     if not _IDENT.match(schema):
         raise ValueError(f"DB_SCHEMA inválido: {schema!r}")
     origins = _env("CORS_ORIGINS", default="")
+    emails = _env("AUTH_ALLOWED_EMAILS", default="")
+    # En Cloud Run (K_SERVICE) no se puede apagar el inicio de sesión por variable.
+    auth_disabled = _flag("AUTH_DISABLED") and not os.getenv("K_SERVICE")
     return Settings(
         db_host=_env("DB_HOST", default="127.0.0.1"),
         db_port=int(_env("DB_PORT", default="5432")),
@@ -86,6 +99,14 @@ def load_settings() -> Settings:
         instance_connection_name=_env("INSTANCE_CONNECTION_NAME"),
         cors_origins=[o.strip() for o in origins.split(",") if o.strip()],
         cache_ttl_seconds=int(_env("CACHE_TTL_SECONDS", default="300")),
+        google_client_id=_env("GOOGLE_CLIENT_ID"),
+        auth_allowed_domain=_env("AUTH_ALLOWED_DOMAIN", default="cun.edu.co").lower(),
+        auth_allowed_emails=frozenset(
+            e.strip().lower() for e in emails.split(",") if e.strip() and "@" in e
+        ),
+        session_secret=_env("SESSION_SECRET"),
+        session_ttl_seconds=int(_env("SESSION_TTL_SECONDS", default="43200")),
+        auth_disabled=auth_disabled,
     )
 
 

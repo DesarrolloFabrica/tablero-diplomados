@@ -17,6 +17,10 @@ El navegador solo habla con el frontend. nginx reenvía `/api/*` al backend, as�
 ni URLs fijas en el código. El backend es de **solo lectura** y **devuelve únicamente agregados**:
 nunca nombres, documentos ni datos de contacto de estudiantes.
 
+El tablero pide **inicio de sesión con Google**. Solo entran los correos escritos en
+`AUTH_ALLOWED_EMAILS`. Pertenecer a `@cun.edu.co` no alcanza. La API de datos
+responde 401 si no hay cookie de sesión.
+
 ## Estructura
 
 ```
@@ -75,9 +79,14 @@ npm run dev                                              # http://localhost:5173
 
 Vite reenvía `/api` a `localhost:8787` (se cambia con `VITE_API_PROXY`).
 
+Para ver datos en local sin Google, agrega `AUTH_DISABLED=1` en `backend/.env`.
+Esa variable se ignora en Cloud Run. Con Google en local hace falta `GOOGLE_CLIENT_ID`,
+`SESSION_SECRET` (32+ caracteres) y `http://localhost:5173` como origen JavaScript autorizado.
+
 ## Despliegue en GCP
 
-**Una sola vez** (secreto `DB_PASSWORD` y acceso de Cloud Run a ese secreto):
+**Una sola vez** (secreto `DB_PASSWORD`, secreto de la cookie `diplomados-session-secret`
+y acceso de Cloud Run a ambos):
 
 ```powershell
 .\scripts\setup-gcp.ps1
@@ -102,11 +111,26 @@ crea un trigger de Cloud Build conectado a este repositorio que use `cloudbuild.
 | `DB_NAME`, `DB_USER` (o `DB_USERNAME`), `DB_SCHEMA` | `.env` | `--set-env-vars` |
 | `DB_PASSWORD` | `.env` | Secret Manager `diplomados-db-password` |
 | `CACHE_TTL_SECONDS` | opcional (300) | opcional |
+| `GOOGLE_CLIENT_ID` | cliente OAuth web | `--substitutions=_GOOGLE_CLIENT_ID=…` en el build |
+| `AUTH_ALLOWED_DOMAIN` | sugerencia del botón de Google (`cun.edu.co`) | igual (sustitución `_AUTH_ALLOWED_DOMAIN`) |
+| `AUTH_ALLOWED_EMAILS` | correos que pueden ver el tablero, separados por coma | obligatorio en el servicio |
+| `SESSION_SECRET` | `.env` (32+ caracteres) | Secret Manager `diplomados-session-secret` |
+
+Cliente OAuth (consola de Google Cloud → APIs y servicios → Credenciales → ID de cliente OAuth, tipo **Aplicación web**):
+
+- Orígenes de JavaScript autorizados: `http://localhost:5173` y la URL `https://` del servicio `diplomados-frontend`.
+- No hace falta URI de redirección: el botón de Google devuelve un ID token y el backend lo verifica.
+
+El backend sale a internet por el conector VPC (`--vpc-egress=all-traffic`). Esa salida tiene que poder llegar a `https://www.googleapis.com` para validar el token (Cloud NAT, si el conector no tiene ruta directa).
 
 ## Endpoints
 
 | Ruta | Descripción |
 |---|---|
+| `GET /api/auth/config` | cliente de Google y dominio permitido (público) |
+| `GET /api/auth/me` | sesión actual |
+| `POST /api/auth/google` | verifica el ID token y deja la cookie `tablero_session` |
+| `POST /api/auth/logout` | borra la cookie |
 | `GET /api/health` | estado de la API y de la conexión a la base |
 | `GET /api/filtros` | líneas y periodos disponibles, con su rango de cortes |
 | `GET /api/ventas/filtros` | opciones de filtros: líneas, periodos, diplomados, semanas |

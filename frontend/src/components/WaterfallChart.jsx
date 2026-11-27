@@ -86,8 +86,10 @@ export default function WaterfallChart() {
           </div>
         ))}
       </div>
-      <div className="cwrap" style={{ height: 210 }}>
-        <Bar data={chartData} options={options} />
+      <div className="chart-scroll">
+        <div className="cwrap" style={{ height: 210, minWidth: Math.max(620, scaledBars.length * 72) }}>
+          <Bar data={chartData} options={options} />
+        </div>
       </div>
     </div>
   )

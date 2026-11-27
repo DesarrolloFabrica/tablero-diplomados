@@ -241,7 +241,6 @@ def ventas(linea: str | None, periodo: str | None, programa: str | None, semana:
         p["tasa"] = _pct(p["pag"], p["n"])
     color_de = {cod: PROG_PALETTE[i % len(PROG_PALETTE)] for i, cod in enumerate(sorted(prog))}
     por_volumen = sorted(prog.values(), key=lambda p: p["n"], reverse=True)
-    top8 = por_volumen[:8]
 
     n = len(actual)
     pagadas = sum(1 for r in actual if r["pago"])
@@ -317,18 +316,18 @@ def ventas(linea: str | None, periodo: str | None, programa: str | None, semana:
     # Burbujas y desviación
     bubble = [{"l": p["l"], "x": p["n"], "y": p["tasa"], "c": round(p["pend"] / 1e6, 1)} for p in por_volumen]
     diverging = [
-        {"l": p["l"], "v": round(p["tasa"] - avg_pago, 1)} for p in por_volumen[:14] if p["n"] >= 5
+        {"l": p["l"], "v": round(p["tasa"] - avg_pago, 1)} for p in por_volumen
     ]
 
-    # Pirámide de género (top 8)
-    gender = [{"l": p["l"], "f": p["f"], "m": p["m"]} for p in top8]
+    # Pirámide de género
+    gender = [{"l": p["l"], "f": p["f"], "m": p["m"]} for p in por_volumen]
 
     # Cascada: facturado → pendientes por programa → pagado
     facturado = sum(r["valor_orden"] for r in actual) / 1e6
     pend_prog = sorted((p for p in prog.values() if p["pend"] > 0), key=lambda p: p["pend"], reverse=True)
     bars = [{"l": "Facturado\ntotal", "v": [0, round(facturado, 1)], "lbl": f"${facturado:.1f}M", "kind": "facturado"}]
     nivel = facturado
-    for p in pend_prog[:7]:
+    for p in pend_prog:
         v = p["pend"] / 1e6
         bars.append(
             {
@@ -339,10 +338,6 @@ def ventas(linea: str | None, periodo: str | None, programa: str | None, semana:
             }
         )
         nivel -= v
-    otros = sum(p["pend"] for p in pend_prog[7:]) / 1e6
-    if otros > 0:
-        bars.append({"l": "Pend.\nOtros", "v": [round(nivel - otros, 1), round(nivel, 1)], "lbl": f"-${otros:.1f}M", "kind": "pendiente_otros"})
-        nivel -= otros
     bars.append({"l": "Pagado\n(órdenes)", "v": [0, round(nivel, 1)], "lbl": f"${nivel:.1f}M", "kind": "recaudo"})
 
     # Edad vs tasa de pago
@@ -355,7 +350,7 @@ def ventas(linea: str | None, periodo: str | None, programa: str | None, semana:
             edad_p[b] += 1 if r["pago"] else 0
     age = {"labels": EDADES, "counts": [edad_n[b] for b in EDADES], "pagos": [_pct(edad_p[b], edad_n[b]) for b in EDADES]}
 
-    # Heatmap programa × semana de creación (top 8) y flujo semanal
+    # Heatmap programa × semana de creación y flujo semanal
     weeks = semanas_act
     hm: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     wk_n: dict[str, int] = defaultdict(int)
@@ -367,7 +362,7 @@ def ventas(linea: str | None, periodo: str | None, programa: str | None, semana:
         hm[r["cod_unidad"] or "?"][k] += 1
         wk_n[k] += 1
         wk_p[k] += 1 if r["pago"] else 0
-    heat_rows = [{"l": p["l"], "data": [hm[p["cod"]].get(w, 0) for w in weeks]} for p in top8]
+    heat_rows = [{"l": p["l"], "data": [hm[p["cod"]].get(w, 0) for w in weeks]} for p in por_volumen]
     weekly = {
         "labels": [_week_label(w, "\n") for w in weeks],
         "counts": [wk_n[w] for w in weeks],
@@ -383,14 +378,14 @@ def ventas(linea: str | None, periodo: str | None, programa: str | None, semana:
     for r in rows:
         if (r["linea"], r["periodo"]) == key_slope and r["fecha_corte"] in ult3:
             by_corte[r["fecha_corte"]].append(r)
-    top_slope = sorted(
-        {r["cod_unidad"] for r in by_corte[ult3[-1]]},
-        key=lambda c: -sum(1 for r in by_corte[ult3[-1]] if r["cod_unidad"] == c),
-    )[:8]
-    for cod in top_slope:
+    slope_programas = sorted(
+        {r["cod_unidad"] or "?" for r in by_corte[ult3[-1]]},
+        key=lambda c: -sum(1 for r in by_corte[ult3[-1]] if (r["cod_unidad"] or "?") == c),
+    )
+    for cod in slope_programas:
         vals = []
         for fc in ult3:
-            sub = [r for r in by_corte[fc] if r["cod_unidad"] == cod]
+            sub = [r for r in by_corte[fc] if (r["cod_unidad"] or "?") == cod]
             vals.append(_pct(sum(1 for r in sub if r["pago"]), len(sub)) if sub else None)
         while len(vals) < 3:
             vals.append(None)
@@ -411,6 +406,7 @@ def ventas(linea: str | None, periodo: str | None, programa: str | None, semana:
             "corte_label": _fecha_larga(corte_max),
             "ultima_semana": ultima_semana,
             "semanas_heatmap": len(weeks),
+            "programas": len(prog),
             "periodos": [{"linea": k[0], "periodo": k[1], "ultimo_corte": v.isoformat()} for k, v in sorted(ultimo.items(), key=lambda kv: kv[1], reverse=True)],
             "slope_periodo": key_slope[1],
             "fuente": f"{settings.db_name}.{settings.db_schema}",

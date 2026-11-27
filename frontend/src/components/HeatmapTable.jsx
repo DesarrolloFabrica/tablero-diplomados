@@ -27,7 +27,7 @@ export default function HeatmapTable() {
     <div className="card">
       <div className="ct">Matrículas nuevas por programa y semana</div>
       <div className="cs">
-        Matrículas por programa (8 con más volumen) y semana de creación de la orden · Más oscuro = más registros
+        Matrículas de todos los programas por semana de creación de la orden · Más oscuro = más registros
       </div>
       <div className="hmap-wrap hmap">
         {slicedRows.length === 0 ? (

@@ -110,6 +110,6 @@ crea un trigger de Cloud Build conectado a este repositorio que use `cloudbuild.
 | `GET /api/health` | estado de la API y de la conexión a la base |
 | `GET /api/filtros` | líneas y periodos disponibles, con su rango de cortes |
 | `GET /api/ventas/filtros` | opciones de filtros: líneas, periodos, diplomados, semanas |
-| `GET /api/ventas?linea=&periodo=&programa=&semana=` | payload del tablero (KPIs, burbujas, desviación, edad, género, cascada, heatmap, trayectoria, flujo semanal) |
+| `GET /api/ventas?linea=&periodo=&programa=&semana=` | payload completo del tablero, sin recortar programas (KPIs, burbujas, desviación, edad, género, cascada, heatmap, trayectoria, flujo semanal) |
 | `GET /api/tablero?linea=&periodo=` | resumen alterno por corte (KPIs, evolución, programas, asesores) |
 | `GET /api/docs` | documentación interactiva (OpenAPI) |

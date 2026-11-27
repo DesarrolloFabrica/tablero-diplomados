@@ -303,17 +303,19 @@ export default function SlopeChart() {
     <div className="card">
       <div className="ct">Trayectoria de cobranza por programa entre períodos cortos</div>
       <div className="cs">
-        Tasa de pago en los 3 últimos cortes (8 programas con más matrículas) — {SEM_AVGS.map((s) => s.lbl).join(' · ')}
+        Tasa de pago de todos los programas en los 3 últimos cortes — {SEM_AVGS.map((s) => s.lbl).join(' · ')}
         {VENTAS_GCP_META.slope_periodo ? ` · Periodo ${VENTAS_GCP_META.slope_periodo}` : ''}
       </div>
-      <div ref={wrapRef} className="cwrap slope-chart-wrap">
-        {rows.length === 0 ? (
-          <p style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--gray)', fontSize: 12 }}>
-            No hay registros para la combinación de filtros seleccionados.
-          </p>
-        ) : (
-          <Line ref={chartRef} data={chartData} options={options} plugins={[slopePlugin]} />
-        )}
+      <div className="chart-scroll-y chart-scroll-slope">
+        <div ref={wrapRef} className="cwrap slope-chart-wrap" style={{ height: Math.max(340, rows.length * 25 + 160) }}>
+          {rows.length === 0 ? (
+            <p style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--gray)', fontSize: 12 }}>
+              No hay registros para la combinación de filtros seleccionados.
+            </p>
+          ) : (
+            <Line ref={chartRef} data={chartData} options={options} plugins={[slopePlugin]} />
+          )}
+        </div>
       </div>
     </div>
   )

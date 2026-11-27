@@ -95,14 +95,16 @@ export default function DivergingChart() {
     <div className="card">
       <div className="ct">Desviación de la cobranza frente al promedio global</div>
       <div className="cs">Desviación vs tasa de pago general del filtro ({AVG_PAGO}%) · Línea = referencia 0</div>
-      <div className="cwrap" style={{ height: 270 }}>
-        {sorted.length === 0 ? (
-          <p style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--gray)', fontSize: 12 }}>
-            No hay registros para la combinación de filtros seleccionados.
-          </p>
-        ) : (
-          <Bar data={chartData} options={options} plugins={[zeroLinePlugin]} />
-        )}
+      <div className="chart-scroll-y">
+        <div className="cwrap" style={{ height: Math.max(270, sorted.length * 30) }}>
+          {sorted.length === 0 ? (
+            <p style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--gray)', fontSize: 12 }}>
+              No hay registros para la combinación de filtros seleccionados.
+            </p>
+          ) : (
+            <Bar data={chartData} options={options} plugins={[zeroLinePlugin]} />
+          )}
+        </div>
       </div>
     </div>
   )

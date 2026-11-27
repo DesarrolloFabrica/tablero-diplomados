@@ -135,7 +135,7 @@ export default function GenderPyramid() {
   return (
     <div className="card">
       <div className="ct">Composición de género por programa</div>
-      <div className="cs">Matrículas por género en los 8 programas con más matrículas · Izquierda = Mujer · Derecha = Hombre</div>
+      <div className="cs">Matrículas por género en todos los programas · Izquierda = Mujer · Derecha = Hombre</div>
       <div className="leg">
         <div className="ldot">
           <div className="ldr" style={{ background: MUJER }} />
@@ -146,14 +146,16 @@ export default function GenderPyramid() {
           Hombre (M)
         </div>
       </div>
-      <div className="cwrap" style={{ height: 220 }}>
-        {rows.length === 0 ? (
-          <p style={{ padding: '40px 12px', textAlign: 'center', color: 'var(--gray)', fontSize: 12 }}>
-            No hay registros para la combinación de filtros seleccionados.
-          </p>
-        ) : (
-          <Bar data={chartData} options={options} plugins={[centerLinePlugin]} />
-        )}
+      <div className="chart-scroll-y">
+        <div className="cwrap" style={{ height: Math.max(220, rows.length * 30) }}>
+          {rows.length === 0 ? (
+            <p style={{ padding: '40px 12px', textAlign: 'center', color: 'var(--gray)', fontSize: 12 }}>
+              No hay registros para la combinación de filtros seleccionados.
+            </p>
+          ) : (
+            <Bar data={chartData} options={options} plugins={[centerLinePlugin]} />
+          )}
+        </div>
       </div>
     </div>
   )

@@ -103,7 +103,7 @@ export default function BubbleChart() {
         },
       },
       datalabels: {
-        display: (ctx) => filt.length && ctx.dataIndex < 8,
+        display: (ctx) => ctx.dataIndex < 10,
         color: LABEL_DATOS_NEGRO,
         font: { size: 9, weight: '600', family: "'IBM Plex Mono', monospace" },
         formatter: (_, ctx) => (filt[ctx.dataIndex] ? filt[ctx.dataIndex].l : ''),
